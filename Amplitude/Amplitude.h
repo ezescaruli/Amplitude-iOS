@@ -5,6 +5,7 @@
 #import "AMPIdentify.h"
 #import "AMPRevenue.h"
 
+@protocol AmplitudeDelegate;
 
 /**
  Amplitude iOS SDK.
@@ -98,6 +99,8 @@
  Whether to automatically log start and end session events corresponding to the start and end of a user's session.
  */
 @property (nonatomic, assign) BOOL trackingSessionEvents;
+
+@property (nonatomic, weak) id<AmplitudeDelegate> delegate;
 
 
 #pragma mark - Methods
@@ -594,6 +597,18 @@
 + (void)printEventsCount __attribute((deprecated()));
 
 + (NSString*)getDeviceId __attribute((deprecated()));
+@end
+
+@protocol AmplitudeDelegate <NSObject>
+
+@optional
+
+- (BOOL)amplitudeInstance:(Amplitude *)amplitudeInstance shouldSkipSessionCheckForTimestamp:(NSNumber *)timestamp;
+
+- (NSDate *)startSessionEventDateForAmplitudeInstance:(Amplitude *)amplitudeInstance;
+
+- (NSDate *)endSessionEventDateForAmplitudeInstance:(Amplitude *)amplitudeInstance;
+
 @end
 
 #pragma mark - constants

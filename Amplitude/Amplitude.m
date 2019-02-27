@@ -1194,7 +1194,37 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 
     NSMutableDictionary *apiProperties = [NSMutableDictionary dictionary];
     [apiProperties setValue:sessionEvent forKey:@"special"];
-    NSNumber* timestamp = [self lastEventTime];
+    
+    NSDate *eventDate = nil;
+    
+    if ([sessionEvent isEqualToString:kAMPSessionStartEvent] &&
+        [self.delegate respondsToSelector:@selector(startSessionEventDateForAmplitudeInstance:)]) {
+        
+        eventDate = [self.delegate startSessionEventDateForAmplitudeInstance:self];
+        
+    } else if ([sessionEvent isEqualToString:kAMPSessionEndEvent] &&
+               [self.delegate respondsToSelector:@selector(endSessionEventDateForAmplitudeInstance:)]) {
+        
+        eventDate = [self.delegate endSessionEventDateForAmplitudeInstance:self];
+    }
+    
+    NSNumber *timestamp;
+    NSNumber *lastEventTime = [self lastEventTime];
+    
+    if (eventDate == nil) {
+        // By default, use the last event time as the timestamp
+        timestamp = lastEventTime;
+    } else {
+        long long delegateTimestamp = [eventDate timeIntervalSince1970] * 1000;
+        
+        if (delegateTimestamp > lastEventTime.longLongValue) {
+            // If the timestamp reported by the delegate is later than the last event time, use the delegate one.
+            timestamp = [NSNumber numberWithLongLong:delegateTimestamp];
+        } else {
+            timestamp = lastEventTime;
+        }
+    }
+    
     [self logEvent:sessionEvent withEventProperties:nil withApiProperties:apiProperties withUserProperties:nil withGroups:nil withTimestamp:timestamp outOfSession:NO];
 }
 
@@ -1205,6 +1235,11 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 
 - (BOOL)isWithinMinTimeBetweenSessions:(NSNumber*) timestamp
 {
+    if ([self.delegate respondsToSelector:@selector(amplitudeInstance:shouldSkipSessionCheckForTimestamp:)] &&
+        [self.delegate amplitudeInstance:self shouldSkipSessionCheckForTimestamp:timestamp]) {
+        return YES;
+    }
+    
     NSNumber *previousSessionTime = [self lastEventTime];
     long long timeDelta = [timestamp longLongValue] - [previousSessionTime longLongValue];
 
